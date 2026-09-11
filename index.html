@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CartScan AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0f0a;--bg2:#111811;--bg3:#162016;--surface:#1c251c;--surface2:#223022;
+  --border:#2a3a2a;--border2:#354535;--green:#4ade80;--green2:#22c55e;--green3:#16a34a;
+  --green-dim:#1a3a1a;--green-glow:rgba(74,222,128,0.12);--amber:#fbbf24;--amber-dim:#2a1f0a;
+  --red:#f87171;--red-dim:#2a1010;--text:#e8f0e8;--text2:#8fa88f;--text3:#5a705a;
+  --radius:12px;--radius-sm:8px;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg2)}::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.logo{padding:24px 20px 20px;border-bottom:1px solid var(--border)}
+.logo-mark{display:flex;align-items:center;gap:10px;margin-bottom:4px}
+.logo-icon{width:32px;height:32px;background:var(--green);border-radius:8px;display:flex;align-items:center;justify-content:center}
+.logo-icon svg{width:18px;height:18px}
+.logo-name{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--text);letter-spacing:-0.3px}
+.logo-sub{font-size:11px;color:var(--text3);margin-left:42px}
+.nav{flex:1;padding:12px 0}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;color:var(--text2);cursor:pointer;transition:all 0.15s;border-left:2px solid transparent}
+.nav-item:hover{color:var(--text);background:var(--surface)}
+.nav-item.active{color:var(--green);background:var(--green-dim);border-left-color:var(--green)}
+.nav-item svg{width:16px;height:16px;flex-shrink:0}
+.nav-badge{margin-left:auto;background:var(--green3);color:#fff;font-size:10px;font-weight:600;padding:2px 6px;border-radius:10px}
+.sidebar-footer{padding:16px 20px;border-top:1px solid var(--border)}
+.api-status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text3)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);flex-shrink:0}
+.panel{display:none;flex-direction:column;flex:1;padding:0}
+.panel.active{display:flex}
+.panel-header{padding:28px 32px 24px;border-bottom:1px solid var(--border);background:var(--bg2)}
+.panel-title{font-family:'Syne',sans-serif;font-size:22px;font-weight:700;color:var(--text);margin-bottom:4px}
+.panel-sub{font-size:13px;color:var(--text2)}
+.panel-body{padding:28px 32px;flex:1;overflow-y:auto}
+.scan-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;align-items:start}
+.upload-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius-sm);margin:20px;padding:40px 20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative}
+.drop-zone:hover,.drop-zone.over{border-color:var(--green);background:var(--green-dim)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{width:52px;height:52px;background:var(--green-dim);border:1px solid var(--border2);border-radius:12px;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.drop-icon svg{width:24px;height:24px;stroke:var(--green)}
+.drop-title{font-size:14px;font-weight:500;color:var(--text);margin-bottom:6px}
+.drop-sub{font-size:12px;color:var(--text3)}
+.preview-wrap{margin:0 20px 20px;display:none}
+.preview-wrap img{width:100%;border-radius:var(--radius-sm);border:1px solid var(--border);max-height:280px;object-fit:contain;background:#000}
+.scan-btn{width:calc(100% - 40px);margin:0 20px 20px;background:var(--green);color:#0a0f0a;border:none;border-radius:var(--radius-sm);padding:13px;font-size:14px;font-weight:600;font-family:'Syne',sans-serif;cursor:pointer;transition:all 0.15s;display:flex;align-items:center;justify-content:center;gap:8px}
+.scan-btn:hover:not(:disabled){background:#86efac;transform:translateY(-1px)}
+.scan-btn:disabled{opacity:0.4;cursor:not-allowed;transform:none}
+.status-bar{margin:0 20px 20px;padding:10px 14px;border-radius:var(--radius-sm);font-size:12px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);display:none}
+.status-bar.active{display:block;color:var(--green)}
+.status-bar.error{display:block;color:var(--red);background:var(--red-dim);border-color:rgba(248,113,113,0.2)}
+.results-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius)}
+.rc-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.rc-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--text)}
+.rc-empty{padding:40px 20px;text-align:center;color:var(--text3);font-size:13px}
+.bill-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.metric-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.metric-label{font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:8px}
+.metric-value{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:var(--text)}
+.metric-value.green{color:var(--green)}
+.bill-table{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.bt-head{display:grid;grid-template-columns:1fr 60px 80px 90px;gap:12px;padding:11px 20px;background:var(--surface2);border-bottom:1px solid var(--border);font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px}
+.bt-row{display:grid;grid-template-columns:1fr 60px 80px 90px;gap:12px;padding:12px 20px;border-bottom:1px solid var(--border);align-items:center;transition:background 0.1s}
+.bt-row:last-child{border-bottom:none}
+.bt-row:hover{background:var(--surface2)}
+.bt-name{font-size:13px;color:var(--text);display:flex;align-items:center;gap:8px}
+.bt-qty{font-size:13px;color:var(--text2);text-align:right}
+.bt-conf{font-size:12px;color:var(--text2);text-align:right}
+.bt-price{font-size:13px;font-weight:500;color:var(--text);text-align:right}
+.bt-footer{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;background:var(--surface2);border-top:1px solid var(--border)}
+.bt-total-label{font-size:13px;color:var(--text2)}
+.bt-total{font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:var(--green)}
+.badge{display:inline-flex;align-items:center;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:600}
+.badge-db{background:rgba(74,222,128,0.12);color:var(--green)}
+.badge-new{background:var(--amber-dim);color:var(--amber)}
+.badge-low{background:var(--red-dim);color:var(--red)}
+.unknown-section{margin-top:20px;background:var(--surface);border:1px solid rgba(251,191,36,0.3);border-radius:var(--radius);overflow:hidden}
+.unknown-header{padding:12px 20px;background:var(--amber-dim);border-bottom:1px solid rgba(251,191,36,0.2);font-size:13px;font-weight:500;color:var(--amber)}
+.unknown-row{display:grid;grid-template-columns:1fr 130px 110px auto;gap:12px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border)}
+.unknown-row:last-child{border-bottom:none}
+.unknown-name{font-size:13px;color:var(--text)}
+.mini-input{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--text);width:100%;outline:none;font-family:'DM Sans',sans-serif}
+.mini-input:focus{border-color:var(--green)}
+.save-item-btn{background:var(--green-dim);color:var(--green);border:1px solid rgba(74,222,128,0.3);border-radius:6px;padding:6px 14px;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all 0.15s}
+.save-item-btn:hover{background:var(--green);color:#0a0f0a}
+.db-toolbar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.db-input{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;flex:1;min-width:120px}
+.db-input:focus{border-color:var(--green)}
+.db-input::placeholder{color:var(--text3)}
+.add-btn{background:var(--green);color:#0a0f0a;border:none;border-radius:var(--radius-sm);padding:9px 20px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;font-family:'Syne',sans-serif}
+.add-btn:hover{opacity:0.85}
+.db-table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.db-table{width:100%;border-collapse:collapse}
+.db-table th{text-align:left;padding:11px 16px;font-size:11px;color:var(--text3);text-transform:uppercase;letter-spacing:0.5px;font-weight:500;background:var(--surface2);border-bottom:1px solid var(--border)}
+.db-table td{padding:12px 16px;font-size:13px;border-bottom:1px solid var(--border);color:var(--text)}
+.db-table tr:last-child td{border-bottom:none}
+.db-table tbody tr:hover td{background:var(--surface2)}
+.db-cat{font-size:11px;color:var(--text3);background:var(--bg3);padding:2px 8px;border-radius:10px;display:inline-block}
+.del-btn{background:none;border:1px solid transparent;border-radius:6px;color:var(--text3);cursor:pointer;padding:4px 8px;font-size:12px;transition:all 0.15s}
+.del-btn:hover{color:var(--red);border-color:rgba(248,113,113,0.3);background:var(--red-dim)}
+.price-cell{display:flex;align-items:center;gap:6px}
+.price-input{background:var(--bg3);border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:13px;color:var(--text);width:80px;outline:none;font-family:'DM Sans',sans-serif;text-align:right}
+.price-input:focus{border-color:var(--green);background:var(--bg2)}
+.price-save{background:var(--green-dim);color:var(--green);border:1px solid rgba(74,222,128,0.3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer;transition:all 0.15s;white-space:nowrap}
+.price-save:hover{background:var(--green);color:#0a0f0a}
+.price-saved{color:var(--green);font-size:11px;font-weight:600}
+.db-search{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:9px 14px;font-size:13px;color:var(--text);font-family:'DM Sans',sans-serif;outline:none;width:220px}
+.db-search:focus{border-color:var(--green)}
+.db-search::placeholder{color:var(--text3)}
+.db-count{font-size:13px;color:var(--text3);margin-left:auto}
+.acc-metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:20px}
+.chart-title{font-family:'Syne',sans-serif;font-size:14px;font-weight:600;color:var(--text);margin-bottom:16px}
+.chart-wrap{position:relative;height:220px}
+.log-table{width:100%;border-collapse:collapse;font-size:12px}
+.log-table th{text-align:left;padding:8px 12px;color:var(--text3);font-weight:500;border-bottom:1px solid var(--border);font-size:11px;text-transform:uppercase}
+.log-table td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text2)}
+.log-table tr:last-child td{border-bottom:none}
+.conf-bar-wrap{display:flex;align-items:center;gap:8px}
+.conf-bar{height:6px;border-radius:3px;flex-shrink:0}
+.conf-pct{font-size:12px;font-weight:500;color:var(--text)}
+.hist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px}
+.hist-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:border-color 0.15s}
+.hist-card:hover{border-color:var(--border2)}
+.hist-thumb{width:100%;height:160px;object-fit:cover;display:block;background:var(--bg3)}
+.hist-body{padding:16px}
+.hist-ts{font-size:11px;color:var(--text3);margin-bottom:8px}
+.hist-stats{display:flex;gap:16px;margin-bottom:10px}
+.hist-stat{font-size:12px;color:var(--text2);display:flex;align-items:center;gap:4px}
+.hist-stat strong{color:var(--text)}
+.hist-items-list{font-size:12px;color:var(--text3);line-height:1.6}
+.hist-del{background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;margin-top:8px;padding:0;transition:color 0.15s}
+.hist-del:hover{color:var(--red)}
+.empty-state{text-align:center;padding:60px 20px;color:var(--text3)}
+.empty-icon{font-size:40px;margin-bottom:16px;opacity:0.4}
+.empty-text{font-size:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spin{animation:spin 0.8s linear infinite;display:inline-block}
+.toast-container{position:fixed;bottom:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:12px 16px;font-size:13px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,0.4);animation:slideIn 0.2s ease;display:flex;align-items:center;gap:10px}
+.toast.success{border-left:3px solid var(--green)}
+.toast.error{border-left:3px solid var(--red)}
+@keyframes slideIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.panel-body::-webkit-scrollbar{width:5px}
+.panel-body::-webkit-scrollbar-track{background:transparent}
+.panel-body::-webkit-scrollbar-thumb{background:var(--border)}
+@media(max-width:900px){.scan-layout{grid-template-columns:1fr}.bill-metrics{grid-template-columns:1fr 1fr}.acc-metrics{grid-template-columns:1fr 1fr}}
+@media(max-width:640px){.sidebar{width:60px}.nav-item span,.logo-name,.logo-sub,.nav-badge,.sidebar-footer .api-status span{display:none}.logo-mark{justify-content:center}.nav-item{justify-content:center;padding:12px}.panel-body{padding:16px}.panel-header{padding:18px 16px}.bill-metrics{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="shell">
+  <nav class="sidebar">
+    <div class="logo">
+      <div class="logo-mark">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0a0f0a" stroke-width="2.5"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 001.99 1.61H19a2 2 0 001.99-1.81L23 6H6"/></svg>
+        </div>
+        <span class="logo-name">CartScan AI</span>
+      </div>
+      <div class="logo-sub">Grocery Detection System</div>
+    </div>
+    <div class="nav">
+      <div class="nav-item active" onclick="showPanel('scan',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        <span>Scan Cart</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('bill',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="12" y2="17"/></svg>
+        <span>Bill</span>
+        <span class="nav-badge" id="billBadge" style="display:none">!</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('database',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3S3 13.66 3 12"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        <span>Database</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('accuracy',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        <span>Accuracy</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('history',this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span>History</span>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <div class="api-status">
+        <div class="dot"></div>
+        <span>Claude AI Ready</span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="main">
+    <!-- SCAN PANEL -->
+    <div class="panel active" id="panel-scan">
+      <div class="panel-header">
+        <div class="panel-title">Scan Shopping Cart</div>
+        <div class="panel-sub">Upload a photo of your cart — AI will detect all grocery items and generate a bill</div>
+      </div>
+      <div class="panel-body">
+        <div class="scan-layout">
+          <div class="upload-card">
+            <div class="drop-zone" id="dropZone" ondragover="doDrag(event)" ondragleave="doDragLeave()" ondrop="doDrop(event)">
+              <input type="file" accept="image/*" id="fileInput" onchange="onFile(event)">
+              <div class="drop-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+              <div class="drop-title">Drop cart image here</div>
+              <div class="drop-sub">or click to browse · JPG, PNG, WEBP, HEIC</div>
+            </div>
+            <div class="preview-wrap" id="previewWrap"><img id="previewImg" alt="Cart preview"></div>
+            <button class="scan-btn" id="scanBtn" onclick="scanCart()" disabled>
+              <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+              Scan Items
+            </button>
+            <div class="status-bar" id="statusBar"></div>
+          </div>
+
+          <div class="results-card">
+            <div class="rc-header"><span class="rc-title">Live Detection Results</span></div>
+            <div id="liveResults"><div class="rc-empty">Scan a cart image to see live detection results here</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BILL PANEL -->
+    <div class="panel" id="panel-bill">
+      <div class="panel-header">
+        <div class="panel-title">Generated Bill</div>
+        <div class="panel-sub">Itemised bill from the last scan — prices pulled from the database</div>
+      </div>
+      <div class="panel-body">
+        <div class="bill-metrics">
+          <div class="metric-card"><div class="metric-label">Items Detected</div><div class="metric-value" id="mItems">—</div></div>
+          <div class="metric-card"><div class="metric-label">Avg Confidence</div><div class="metric-value green" id="mConf">—</div></div>
+          <div class="metric-card"><div class="metric-label">Total Amount</div><div class="metric-value green" id="mTotal">—</div></div>
+        </div>
+        <div class="bill-table" id="billTable">
+          <div class="bt-head"><span>Item</span><span style="text-align:right">Qty</span><span style="text-align:right">Conf</span><span style="text-align:right">Price</span></div>
+          <div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">Scan a cart to generate a bill</div>
+        </div>
+        <div id="unknownSection" style="display:none"></div>
+        <div style="display:flex;gap:12px;margin-top:16px">
+          <button class="scan-btn" id="saveScanBtn" onclick="saveScan()" style="display:none;max-width:220px;background:var(--surface2);color:var(--text);border:1px solid var(--border2)">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg>
+            Save to History
+          </button>
+          <button class="scan-btn" onclick="exportBill()" style="display:none;max-width:220px" id="exportBtn">
+            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Bill
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- DATABASE PANEL -->
+    <div class="panel" id="panel-database">
+      <div class="panel-header">
+        <div class="panel-title">Item Database</div>
+        <div class="panel-sub">Manage grocery items and their prices</div>
+      </div>
+      <div class="panel-body">
+        <div class="db-toolbar">
+          <input type="text" class="db-input" id="dbName" placeholder="Item name (e.g. Milk 1L)">
+          <input type="number" class="db-input" id="dbPrice" placeholder="Price ₹" style="max-width:110px" min="0" step="0.5">
+          <input type="text" class="db-input" id="dbCat" placeholder="Category" style="max-width:140px">
+          <button class="add-btn" onclick="addItem()">+ Add Item</button>
+          <input type="text" class="db-search" id="dbSearch" placeholder="Search items…" oninput="renderDb()">
+          <span class="db-count" id="dbCount"></span>
+        </div>
+        <div class="db-table-wrap">
+          <table class="db-table">
+            <thead><tr><th>Item Name</th><th>Category</th><th>Price (₹)</th><th>Times Found</th><th>Last Seen</th><th></th></tr></thead>
+            <tbody id="dbBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ACCURACY PANEL -->
+    <div class="panel" id="panel-accuracy">
+      <div class="panel-header">
+        <div class="panel-title">Detection Accuracy</div>
+        <div class="panel-sub">Live accuracy metrics — updates after every detection</div>
+      </div>
+      <div class="panel-body">
+        <div class="acc-metrics">
+          <div class="metric-card"><div class="metric-label">Total Scans</div><div class="metric-value" id="accScans">0</div></div>
+          <div class="metric-card"><div class="metric-label">Avg Confidence</div><div class="metric-value green" id="accAvg">—</div></div>
+          <div class="metric-card"><div class="metric-label">DB Hit Rate</div><div class="metric-value green" id="accHit">—</div></div>
+          <div class="metric-card"><div class="metric-label">Items Logged</div><div class="metric-value" id="accTotal">0</div></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Confidence % per Scan</div>
+          <div class="chart-wrap"><canvas id="confChart"></canvas></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+          <div class="chart-card"><div class="chart-title">Items Detected per Scan</div><div class="chart-wrap"><canvas id="itemsChart"></canvas></div></div>
+          <div class="chart-card"><div class="chart-title">Top 8 Most Detected Items</div><div class="chart-wrap"><canvas id="freqChart"></canvas></div></div>
+        </div>
+        <div class="chart-card" style="margin-top:0">
+          <div class="chart-title">Scan Log</div>
+          <table class="log-table">
+            <thead><tr><th>#</th><th>Time</th><th>Items</th><th>Confidence</th><th>DB Hits</th><th>Total ₹</th></tr></thead>
+            <tbody id="scanLog"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY PANEL -->
+    <div class="panel" id="panel-history">
+      <div class="panel-header">
+        <div class="panel-title">Scan History</div>
+        <div class="panel-sub">All saved cart scans with bills and thumbnails</div>
+      </div>
+      <div class="panel-body"><div id="historyContent"></div></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-container" id="toasts"></div>
+
+<script>
+const S = {
+  db: [
+    // Amul
+    {name:'Amul Gold Full Cream Milk 1L',cat:'Dairy',price:68,found:0,lastSeen:'—'},
+    {name:'Amul Taaza Toned Milk 1L',cat:'Dairy',price:54,found:0,lastSeen:'—'},
+    {name:'Amul Butter 100g',cat:'Dairy',price:57,found:0,lastSeen:'—'},
+    {name:'Amul Butter 500g',cat:'Dairy',price:275,found:0,lastSeen:'—'},
+    {name:'Amul Processed Cheese 200g',cat:'Dairy',price:120,found:0,lastSeen:'—'},
+    {name:'Amul Dahi Curd 400g',cat:'Dairy',price:44,found:0,lastSeen:'—'},
+    {name:'Amul Shrikhand Mango 500g',cat:'Dairy',price:120,found:0,lastSeen:'—'},
+    {name:'Amul Kool Milk Shake 200ml',cat:'Beverages',price:30,found:0,lastSeen:'—'},
+    {name:'Amul Lassi 200ml',cat:'Beverages',price:25,found:0,lastSeen:'—'},
+    // Britannia
+    {name:'Britannia Good Day Cashew Cookies 200g',cat:'Snacks',price:35,found:0,lastSeen:'—'},
+    {name:'Britannia NutriChoice Digestive 250g',cat:'Snacks',price:50,found:0,lastSeen:'—'},
+    {name:'Britannia Marie Gold 250g',cat:'Snacks',price:32,found:0,lastSeen:'—'},
+    {name:'Britannia Milk Bread 400g',cat:'Bakery',price:45,found:0,lastSeen:'—'},
+    {name:'Britannia Cheese Slices 200g',cat:'Dairy',price:115,found:0,lastSeen:'—'},
+    // Maggi
+    {name:'Maggi 2-Minute Noodles Masala 70g',cat:'Snacks',price:14,found:0,lastSeen:'—'},
+    {name:'Maggi 2-Minute Noodles Masala 4-pack',cat:'Snacks',price:56,found:0,lastSeen:'—'},
+    {name:'Maggi Hot & Sweet Tomato Chilli Sauce 500g',cat:'Condiments',price:90,found:0,lastSeen:'—'},
+    {name:'Maggi Masala Noodles 560g Family Pack',cat:'Snacks',price:95,found:0,lastSeen:'—'},
+    // Lay's / Pepsico
+    {name:"Lay's Classic Salted Chips 26g",cat:'Snacks',price:20,found:0,lastSeen:'—'},
+    {name:"Lay's Magic Masala Chips 26g",cat:'Snacks',price:20,found:0,lastSeen:'—'},
+    {name:"Lay's American Style Cream Onion 26g",cat:'Snacks',price:20,found:0,lastSeen:'—'},
+    {name:'Kurkure Masala Munch 90g',cat:'Snacks',price:20,found:0,lastSeen:'—'},
+    // Parle
+    {name:'Parle-G Gold Biscuits 250g',cat:'Snacks',price:20,found:0,lastSeen:'—'},
+    {name:'Parle Hide & Seek Chocolate Chip 100g',cat:'Snacks',price:30,found:0,lastSeen:'—'},
+    {name:'Parle Milano Chocolate Cookies 75g',cat:'Snacks',price:30,found:0,lastSeen:'—'},
+    // Tata
+    {name:'Tata Salt Iodized 1kg',cat:'Pantry',price:22,found:0,lastSeen:'—'},
+    {name:'Tata Tea Premium 250g',cat:'Beverages',price:95,found:0,lastSeen:'—'},
+    {name:'Tata Tea Gold 250g',cat:'Beverages',price:110,found:0,lastSeen:'—'},
+    {name:'Tata Sampann Chana Dal 500g',cat:'Pulses',price:85,found:0,lastSeen:'—'},
+    // Nestle
+    {name:'Nescafe Classic Coffee 50g',cat:'Beverages',price:110,found:0,lastSeen:'—'},
+    {name:'Nescafe Gold Blend Coffee 50g',cat:'Beverages',price:280,found:0,lastSeen:'—'},
+    {name:'KitKat 4-Finger Chocolate 41.5g',cat:'Snacks',price:40,found:0,lastSeen:'—'},
+    {name:'Munch Chocolate Bar 26g',cat:'Snacks',price:20,found:0,lastSeen:'—'},
+    // Dabur / Patanjali
+    {name:'Dabur Real Fruit Juice Mixed Fruit 1L',cat:'Beverages',price:99,found:0,lastSeen:'—'},
+    {name:'Dabur Honey 250g',cat:'Pantry',price:115,found:0,lastSeen:'—'},
+    {name:'Patanjali Cow Ghee 1L',cat:'Dairy',price:480,found:0,lastSeen:'—'},
+    // Hindustan Unilever
+    {name:'Surf Excel Easy Wash Detergent 1kg',cat:'Household',price:115,found:0,lastSeen:'—'},
+    {name:'Rin Detergent Bar 250g',cat:'Household',price:22,found:0,lastSeen:'—'},
+    {name:'Dove Shampoo 180ml',cat:'Personal Care',price:175,found:0,lastSeen:'—'},
+    {name:'Lifebuoy Soap Bar 100g',cat:'Personal Care',price:38,found:0,lastSeen:'—'},
+    {name:'Closeup Toothpaste Red Hot 80g',cat:'Personal Care',price:60,found:0,lastSeen:'—'},
+    // ITC / Aashirvaad
+    {name:'Aashirvaad Whole Wheat Atta 5kg',cat:'Grains',price:275,found:0,lastSeen:'—'},
+    {name:'Aashirvaad Whole Wheat Atta 1kg',cat:'Grains',price:60,found:0,lastSeen:'—'},
+    {name:'Sunfeast Dark Fantasy Choco Fills 75g',cat:'Snacks',price:30,found:0,lastSeen:'—'},
+    {name:'Sunfeast Yippee Noodles Magic Masala 70g',cat:'Snacks',price:14,found:0,lastSeen:'—'},
+    // Fortune / Oils
+    {name:'Fortune Sunlite Refined Sunflower Oil 1L',cat:'Pantry',price:140,found:0,lastSeen:'—'},
+    {name:'Saffola Gold Refined Oil 1L',cat:'Pantry',price:165,found:0,lastSeen:'—'},
+    // Generic staples
+    {name:'India Gate Basmati Rice 1kg',cat:'Grains',price:120,found:0,lastSeen:'—'},
+    {name:'Daawat Basmati Rice 1kg',cat:'Grains',price:115,found:0,lastSeen:'—'},
+    {name:'Colgate Strong Teeth Toothpaste 200g',cat:'Personal Care',price:72,found:0,lastSeen:'—'},
+    {name:'Colgate MaxFresh Toothpaste 150g',cat:'Personal Care',price:82,found:0,lastSeen:'—'},
+    {name:'Bisleri Water Bottle 1L',cat:'Beverages',price:20,found:0,lastSeen:'—'},
+    {name:'Tropicana Orange Juice 1L',cat:'Beverages',price:110,found:0,lastSeen:'—'},
+  ],
+  scans:[],accLog:[],lastResult:null,currentB64:null,currentType:null,currentThumb:null
+};
+let confChart=null,itemsChart=null,freqChart=null;
+
+function showPanel(id,el) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  el.classList.add('active');
+  if(id==='database') renderDb();
+  if(id==='accuracy') renderAccuracy();
+  if(id==='history') renderHistory();
+}
+
+function doDrag(e){e.preventDefault();document.getElementById('dropZone').classList.add('over')}
+function doDragLeave(){document.getElementById('dropZone').classList.remove('over')}
+function doDrop(e){e.preventDefault();document.getElementById('dropZone').classList.remove('over');const f=e.dataTransfer.files[0];if(f&&f.type.startsWith('image/'))loadFile(f)}
+function onFile(e){if(e.target.files[0])loadFile(e.target.files[0])}
+
+function loadFile(file) {
+  const reader=new FileReader();
+  reader.onload=e=>{
+    S.currentB64=e.target.result.split(',')[1];
+    S.currentType=file.type||'image/jpeg';
+    S.currentThumb=e.target.result;
+    document.getElementById('previewImg').src=e.target.result;
+    document.getElementById('previewWrap').style.display='block';
+    document.getElementById('scanBtn').disabled=false;
+    setStatus('');
+  };
+  reader.readAsDataURL(file);
+}
+
+async function scanCart() {
+  if(!S.currentB64) return;
+  const btn=document.getElementById('scanBtn');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spin">⟳</span> Scanning…';
+  setStatus('Sending to Claude Vision AI…','active');
+
+  const dbList=S.db.map(d=>d.name).join(', ');
+  const prompt=`You are an expert grocery product recognition AI with deep knowledge of Indian and global FMCG brands.
+
+Carefully examine EVERY product visible in this shopping cart image. Read ALL text, logos, and labels on each product.
+
+For EACH product you can see, extract:
+1. EXACT brand name as printed on the pack (e.g. "Amul", "Britannia", "Maggi", "Lay's", "Surf Excel")
+2. EXACT product name/variant as printed (e.g. "Gold Full Cream Milk", "NutriChoice Digestive", "2-Minute Noodles Masala")
+3. Pack size if visible (e.g. "1L", "500g", "200g")
+
+Combine these into the item name like: "Amul Gold Full Cream Milk 1L" or "Maggi 2-Minute Noodles Masala 70g"
+
+Known items in our price database (use these exact names if they match): ${dbList}
+
+Return ONLY valid JSON (no markdown, no backticks, no explanation):
+{"items":[{"name":"<EXACT brand + product name + size>","qty":<integer>,"inDb":<true/false>,"confidence":<0.0-1.0>,"category":"<category>","brand":"<brand name>","variant":"<product variant>"}],"overallConfidence":<0.0-1.0>,"imageQuality":"<good|fair|poor>","notes":"<one sentence about what brands/products were found>"}
+
+STRICT RULES:
+- ALWAYS read the actual label — never guess a generic name if you can see the brand
+- If label is partially visible, read what you can and note confidence accordingly
+- "Amul Gold" is NOT just "Milk" — use the full brand + variant name
+- Include pack size when visible
+- inDb:true ONLY if the name closely matches something in the database
+- confidence 0.9+ = label clearly readable, 0.6-0.9 = mostly readable, below 0.6 = guessing
+- NEVER repeat the same item twice — if you see 2 units of the same product, set qty:2 (or qty:N for N units)
+- Each unique product should appear ONCE in the items array with the correct qty
+- If no grocery items visible: {"items":[],"overallConfidence":0,"imageQuality":"poor","notes":"No grocery items visible"}`;
+
+  try {
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-haiku-4-5-20251001',
+        max_tokens:1200,
+        messages:[{role:'user',content:[
+          {type:'image',source:{type:'base64',media_type:S.currentType,data:S.currentB64}},
+          {type:'text',text:prompt}
+        ]}]
+      })
+    });
+    if(!res.ok) throw new Error('API error '+res.status);
+    const data=await res.json();
+    const txt=(data.content||[]).find(c=>c.type==='text')?.text||'';
+    let parsed;
+    try{parsed=JSON.parse(txt.replace(/```json|```/g,'').trim());}
+    catch{throw new Error('Parsing failed — try a clearer image.');}
+    S.lastResult=parsed;
+    processResult(parsed);
+    setStatus('✓ '+(parsed.notes||'Detection complete')+' — See Bill tab.','active');
+    document.getElementById('billBadge').style.display='';
+    toast('Detection complete — '+(parsed.items||[]).length+' items found','success');
+  } catch(err){
+    setStatus('Error: '+err.message,'error');
+    toast(err.message,'error');
+  }
+  btn.disabled=false;
+  btn.innerHTML='<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Scan Items';
+}
+
+function processResult(parsed) {
+  const rawItems=parsed.items||[];
+
+  // Merge duplicate items — combine by name (case-insensitive), sum quantities
+  const merged = [];
+  rawItems.forEach(item=>{
+    const key = item.name.toLowerCase().trim();
+    const existing = merged.find(m=>m.name.toLowerCase().trim()===key);
+    if(existing){
+      existing.qty = (existing.qty||1) + (item.qty||1);
+      existing.confidence = Math.max(existing.confidence||0, item.confidence||0);
+    } else {
+      merged.push({...item, qty: item.qty||1});
+    }
+  });
+  const items = merged;
+
+  const conf=Math.round((parsed.overallConfidence||0)*100);
+  const now=new Date().toLocaleString();
+  const ts=new Date().toLocaleTimeString();
+  let total=0,dbHits=0,unknowns=[];
+  items.forEach(item=>{
+    const match=findDb(item.name);
+    if(match){total+=match.price*(item.qty||1);match.found+=item.qty||1;match.lastSeen=ts;dbHits++;}
+    else unknowns.push(item);
+  });
+  // Auto-add newly detected items to DB with their exact brand name
+  unknowns.forEach(item=>{
+    const alreadyAdded=S.db.find(d=>d.name.toLowerCase()===item.name.toLowerCase());
+    if(!alreadyAdded){
+      S.db.push({
+        name: item.name,
+        cat: item.category||item.cat||'Groceries',
+        price: 0,
+        found: 1,
+        lastSeen: ts,
+        autoAdded: true
+      });
+    }
+  });
+  S.accLog.push({ts,conf,items:items.length,dbHits,total,imageQuality:parsed.imageQuality||'—'});
+  const liveDiv=document.getElementById('liveResults');
+  if(!items.length){
+    liveDiv.innerHTML='<div class="rc-empty">No grocery items detected in this image</div>';
+  } else {
+    liveDiv.innerHTML=`
+      <div style="padding:14px 20px 0;display:flex;gap:16px;flex-wrap:wrap">
+        <div style="font-size:12px;color:var(--text3)">Confidence: <strong style="color:${conf>=70?'var(--green)':conf>=40?'var(--amber)':'var(--red)'}">${conf}%</strong></div>
+        <div style="font-size:12px;color:var(--text3)">Image: <strong style="color:var(--text)">${parsed.imageQuality||'—'}</strong></div>
+        <div style="font-size:12px;color:var(--text3)">DB hits: <strong style="color:var(--green)">${dbHits}/${items.length}</strong></div>
+      </div>
+      ${items.map(item=>{
+        const match=findDb(item.name);
+        const c=Math.round((item.confidence||0)*100);
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 20px;border-top:1px solid var(--border);font-size:13px">
+          <div style="display:flex;flex-direction:column;gap:2px;flex:1">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div style="width:6px;height:6px;border-radius:50%;background:${c>=70?'var(--green)':c>=40?'var(--amber)':'var(--red)'}"></div>
+              <span style="color:var(--text);font-weight:500">${item.name}</span>
+              <span class="badge ${match?'badge-db':'badge-new'}">${match?'in db':'new'}</span>
+            </div>
+            ${item.brand?`<div style="font-size:11px;color:var(--text3);margin-left:14px">Brand: <span style="color:var(--amber)">${item.brand}</span>${item.variant?' · '+item.variant:''}</div>`:''}
+          </div>
+          <div style="display:flex;align-items:center;gap:16px;flex-shrink:0">
+            <span style="color:var(--text3)">×${item.qty||1}</span>
+            <span style="color:var(--text3);min-width:36px;text-align:right">${c}%</span>
+            <span style="color:var(--green);min-width:60px;text-align:right;font-weight:500">${match?'₹'+(match.price*(item.qty||1)):'—'}</span>
+          </div>
+        </div>`;
+      }).join('')}`;
+  }
+  renderBill(items,conf,total,unknowns,now);
+}
+
+function renderBill(items,conf,total,unknowns,now) {
+  document.getElementById('mItems').textContent=items.length;
+  document.getElementById('mConf').textContent=conf+'%';
+  document.getElementById('mTotal').textContent='₹'+total.toFixed(0);
+  const bt=document.getElementById('billTable');
+  if(!items.length){
+    bt.innerHTML='<div class="bt-head"><span>Item</span><span style="text-align:right">Qty</span><span style="text-align:right">Conf</span><span style="text-align:right">Price</span></div><div style="padding:40px;text-align:center;color:var(--text3);font-size:13px">No items detected</div>';
+  } else {
+    bt.innerHTML=`
+      <div class="bt-head"><span>Item</span><span style="text-align:right">Qty</span><span style="text-align:right">Conf</span><span style="text-align:right">Price</span></div>
+      ${items.map(item=>{
+        const match=findDb(item.name);
+        const c=Math.round((item.confidence||0)*100);
+        const price=match?match.price*(item.qty||1):null;
+        return `<div class="bt-row">
+          <span class="bt-name" style="flex-direction:column;align-items:flex-start;gap:2px">
+            <span style="display:flex;align-items:center;gap:6px">${item.name} <span class="badge ${match?'badge-db':'badge-new'}">${match?'in db':'new'}</span>${c<50?'<span class="badge badge-low">low conf</span>':''}</span>
+            ${item.brand?`<span style="font-size:11px;color:var(--amber);font-weight:400">${item.brand}${item.variant?' — '+item.variant:''}</span>`:''}
+          </span>
+          <span class="bt-qty">×${item.qty||1}</span>
+          <span class="bt-conf">${c}%</span>
+          <span class="bt-price">${price!==null?'₹'+price.toFixed(0):'—'}</span>
+        </div>`;
+      }).join('')}
+      <div class="bt-footer" style="flex-direction:column;align-items:stretch;gap:8px">
+        ${unknowns.length?`<div style="font-size:11px;color:var(--amber);padding:4px 0">⚠ ${unknowns.length} item(s) without a price — add them in the database section below to include in total</div>`:''}
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span class="bt-total-label">Grand Total (priced items only)</span>
+          <span class="bt-total">₹${total.toFixed(0)}</span>
+        </div>
+      </div>`;
+  }
+  const us=document.getElementById('unknownSection');
+  if(unknowns.length){
+    us.style.display='block';
+    us.innerHTML=`<div class="unknown-section">
+      <div class="unknown-header">🏷️ ${unknowns.length} branded item(s) detected — not in your database yet. Add prices to include in bill.</div>
+      <div style="padding:10px 20px;font-size:11px;color:var(--text3);border-bottom:1px solid var(--border)">These are the EXACT brand names detected from the image labels</div>
+      ${unknowns.map(u=>`
+        <div class="unknown-row" id="unkRow-${esc(u.name)}">
+          <div class="unknown-name">
+            <div style="font-weight:500;color:var(--text)">${u.name}</div>
+            ${u.brand?`<div style="font-size:11px;color:var(--amber);margin-top:2px">${u.brand}${u.variant?' · '+u.variant:''}</div>`:''}
+            <div style="font-size:11px;color:var(--text3)">${u.category||'Unknown'}</div>
+          </div>
+          <input class="mini-input" id="unkCat-${esc(u.name)}" placeholder="Category" value="${u.category||'Groceries'}">
+          <input class="mini-input" type="number" id="unkPrice-${esc(u.name)}" placeholder="Price ₹" min="0" step="1">
+          <button class="save-item-btn" onclick="saveUnknown('${u.name}','${esc(u.name)}')">+ Add to DB</button>
+        </div>`).join('')}
+    </div>`;
+  } else {us.style.display='none';}
+  document.getElementById('saveScanBtn').style.display='';
+  document.getElementById('exportBtn').style.display='';
+}
+
+function saveUnknown(name,key) {
+  if(!key) key=esc(name);
+  const price=parseFloat(document.getElementById('unkPrice-'+key)?.value);
+  const cat=document.getElementById('unkCat-'+key)?.value||'Groceries';
+  if(!price||price<=0){toast('Enter a valid price first','error');return;}
+  S.db.push({name,cat,price,found:1,lastSeen:new Date().toLocaleTimeString()});
+  const row=document.getElementById('unkRow-'+key);
+  if(row) row.innerHTML=`<div class="unknown-name">${name}</div><div style="color:var(--green);font-size:13px;grid-column:2/-1">Saved to database ✓</div>`;
+  toast(name+' added to database','success');
+}
+
+function saveScan() {
+  if(!S.lastResult) return;
+  const items=S.lastResult.items||[];
+  let total=0;
+  items.forEach(item=>{const m=findDb(item.name);if(m)total+=m.price*(item.qty||1);});
+  S.scans.push({ts:new Date().toLocaleString(),items,total,conf:Math.round((S.lastResult.overallConfidence||0)*100),thumb:S.currentThumb,notes:S.lastResult.notes||''});
+  toast('Scan saved to history','success');
+  document.getElementById('saveScanBtn').textContent='✓ Saved';
+  setTimeout(()=>{document.getElementById('saveScanBtn').innerHTML='<svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/></svg> Save to History';},2000);
+}
+
+function exportBill() {
+  if(!S.lastResult) return;
+  const rawItems = S.lastResult.items || [];
+  // Use merged items (same dedup logic as processResult)
+  const merged = [];
+  rawItems.forEach(item=>{
+    const key = item.name.toLowerCase().trim();
+    const existing = merged.find(m=>m.name.toLowerCase().trim()===key);
+    if(existing){ existing.qty=(existing.qty||1)+(item.qty||1); }
+    else { merged.push({...item,qty:item.qty||1}); }
+  });
+
+  const now = new Date().toLocaleString();
+  const billNo = 'CS-' + Date.now().toString().slice(-6);
+  let total = 0;
+  const rows = merged.map(it=>{
+    const m=findDb(it.name);
+    const qty=it.qty||1;
+    const unitPrice=m?m.price:0;
+    const lineTotal=unitPrice*qty;
+    total+=lineTotal;
+    return {name:it.name,brand:it.brand||'',qty,unitPrice,lineTotal,conf:Math.round((it.confidence||0)*100),inDb:!!m,category:it.category||''};
+  });
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>CartScan Bill ${billNo}</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#f4f4f4;padding:30px;color:#1a1a1a}
+.bill{max-width:720px;margin:0 auto;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 4px 28px rgba(0,0,0,0.12)}
+.header{background:linear-gradient(135deg,#052e0f,#16a34a);color:#fff;padding:30px 36px}
+.header-top{display:flex;justify-content:space-between;align-items:flex-start}
+.logo{font-size:26px;font-weight:800;letter-spacing:-0.5px}
+.logo span{color:#4ade80}
+.tagline{font-size:11px;opacity:0.65;margin-top:4px}
+.bill-meta{text-align:right;font-size:12px;opacity:0.85;line-height:1.9}
+.bill-meta strong{font-size:15px;color:#4ade80;display:block}
+.summary{display:flex;background:#f0fdf4;border-bottom:2px solid #dcfce7;padding:16px 36px;gap:0}
+.sum-item{flex:1;display:flex;flex-direction:column;gap:2px;padding-right:16px;border-right:1px solid #dcfce7;margin-right:16px}
+.sum-item:last-child{border-right:none;margin-right:0}
+.sum-label{font-size:10px;text-transform:uppercase;letter-spacing:0.6px;color:#6b7280}
+.sum-value{font-size:22px;font-weight:800;color:#15803d}
+.sum-value.dark{color:#1f2937}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#f9fafb}
+th{padding:11px 16px;font-size:11px;text-transform:uppercase;letter-spacing:0.5px;color:#6b7280;font-weight:600;text-align:left;border-bottom:2px solid #e5e7eb}
+th.r{text-align:right}
+td{padding:12px 16px;border-bottom:1px solid #f3f4f6;font-size:13px;vertical-align:middle}
+td.r{text-align:right}
+.iname{font-weight:600;color:#111}
+.imeta{font-size:11px;color:#9ca3af;margin-top:2px}
+.badge{display:inline-block;font-size:10px;padding:1px 7px;border-radius:10px;margin-left:5px;font-weight:500;vertical-align:middle}
+.badge.matched{background:#f0fdf4;color:#16a34a}
+.badge.new{background:#fffbeb;color:#d97706}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:middle}
+.g{background:#22c55e}.y{background:#f59e0b}.r{background:#ef4444}
+.price{font-weight:600;color:#15803d}
+.na{color:#9ca3af;font-style:italic}
+.total-row td{background:#f0fdf4;font-weight:700;border-top:2px solid #16a34a;border-bottom:none;font-size:14px}
+.total-amt{color:#15803d;font-size:20px;font-weight:800}
+.footer{padding:18px 36px;background:#f9fafb;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center}
+.footer-note{font-size:11px;color:#9ca3af;line-height:1.8}
+.footer-brand{font-size:13px;font-weight:800;color:#16a34a}
+.no-price-warn{padding:10px 36px;background:#fffbeb;border-top:1px solid #fde68a;font-size:11px;color:#b45309}
+.print-bar{text-align:center;margin-top:24px}
+.btn-print{background:#16a34a;color:#fff;border:none;padding:13px 36px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;margin-right:10px}
+.btn-close{background:#e5e7eb;color:#374151;border:none;padding:13px 28px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer}
+@media print{body{background:#fff;padding:0}.bill{box-shadow:none;border-radius:0}.print-bar{display:none}}
+</style>
+</head>
+<body>
+<div class="bill">
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="logo">Cart<span>Scan</span> AI</div>
+        <div class="tagline">Smart Grocery Detection &amp; Billing</div>
+      </div>
+      <div class="bill-meta">
+        <strong>Bill No: ${billNo}</strong>
+        <div>${now}</div>
+        <div>Scan confidence: ${Math.round((S.lastResult.overallConfidence||0)*100)}%</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="summary">
+    <div class="sum-item"><div class="sum-label">Products</div><div class="sum-value dark">${rows.length}</div></div>
+    <div class="sum-item"><div class="sum-label">Total Units</div><div class="sum-value dark">${rows.reduce((a,r)=>a+r.qty,0)}</div></div>
+    <div class="sum-item"><div class="sum-label">DB Matched</div><div class="sum-value dark">${rows.filter(r=>r.inDb).length}/${rows.length}</div></div>
+    <div class="sum-item"><div class="sum-label">Grand Total</div><div class="sum-value">&#8377;${total.toFixed(2)}</div></div>
+  </div>
+
+  <table>
+    <thead><tr><th>#</th><th>Product</th><th class="r">Qty</th><th class="r">Unit Price</th><th class="r">Amount</th></tr></thead>
+    <tbody>
+      ${rows.map((r,i)=>`
+      <tr>
+        <td style="color:#9ca3af;font-size:12px">${i+1}</td>
+        <td>
+          <div class="iname">
+            <span class="dot ${r.conf>=70?'g':r.conf>=40?'y':'r'}"></span>${r.name}
+            <span class="badge ${r.inDb?'matched':'new'}">${r.inDb?'matched':'new'}</span>
+          </div>
+          <div class="imeta">${r.brand?'Brand: '+r.brand+' &middot; ':''} ${r.category} &middot; Confidence: ${r.conf}%</div>
+        </td>
+        <td class="r">${r.qty}</td>
+        <td class="r">${r.unitPrice>0?'&#8377;'+r.unitPrice.toFixed(2):'<span class="na">—</span>'}</td>
+        <td class="r">${r.lineTotal>0?'<span class="price">&#8377;'+r.lineTotal.toFixed(2)+'</span>':'<span class="na">—</span>'}</td>
+      </tr>`).join('')}
+      <tr class="total-row">
+        <td colspan="4" style="color:#15803d;letter-spacing:0.5px">GRAND TOTAL</td>
+        <td class="r total-amt">&#8377;${total.toFixed(2)}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  ${rows.some(r=>!r.inDb)?'<div class="no-price-warn">&#9888; '+rows.filter(r=>!r.inDb).length+' item(s) have no price set — go to the Database tab to add prices.</div>':''}
+
+  <div class="footer">
+    <div class="footer-note">
+      Generated on ${now}<br>
+      ${rows.filter(r=>r.conf<70).length>0?rows.filter(r=>r.conf<70).length+' item(s) detected with low confidence — verify manually.':'All items detected with good confidence.'}
+    </div>
+    <div class="footer-brand">CartScan AI</div>
+  </div>
+</div>
+
+<div class="print-bar">
+  <button class="btn-print" onclick="window.print()">&#128424; Print / Save as PDF</button>
+  <button class="btn-close" onclick="window.close()">&#10005; Close</button>
+</div>
+</body></html>`;
+
+  const win = window.open('','_blank','width=820,height=700,scrollbars=yes');
+  if(!win){ toast('Please allow popups to export the bill','error'); return; }
+  win.document.write(html);
+  win.document.close();
+  toast('Bill opened — Print or Save as PDF!','success');
+}
+
+function addItem() {
+  const name=document.getElementById('dbName').value.trim();
+  const price=parseFloat(document.getElementById('dbPrice').value);
+  const cat=document.getElementById('dbCat').value.trim()||'General';
+  if(!name){toast('Enter item name','error');return;}
+  if(!price||price<=0){toast('Enter valid price','error');return;}
+  if(S.db.find(d=>d.name.toLowerCase()===name.toLowerCase())){toast('Item already exists','error');return;}
+  S.db.push({name,cat,price,found:0,lastSeen:'—'});
+  document.getElementById('dbName').value='';document.getElementById('dbPrice').value='';document.getElementById('dbCat').value='';
+  renderDb();toast(name+' added','success');
+}
+
+function deleteItem(i){if(!confirm('Delete "'+S.db[i].name+'"?'))return;S.db.splice(i,1);renderDb();toast('Item deleted','success');}
+
+function renderDb() {
+  const q=(document.getElementById('dbSearch')?.value||'').toLowerCase();
+  const filtered=S.db.map((d,i)=>({...d,i})).filter(d=>!q||d.name.toLowerCase().includes(q)||d.cat.toLowerCase().includes(q));
+  document.getElementById('dbCount').textContent=filtered.length+' of '+S.db.length+' items';
+  document.getElementById('dbBody').innerHTML=filtered.map(d=>`
+    <tr id="dbrow-${d.i}">
+      <td style="font-weight:500">${d.name}${d.autoAdded?'<span style="font-size:10px;color:var(--amber);margin-left:6px;background:var(--amber-dim);padding:1px 6px;border-radius:8px">new</span>':''}</td>
+      <td><span class="db-cat">${d.cat}</span></td>
+      <td>
+        <div class="price-cell">
+          <span style="color:var(--text3);font-size:12px">₹</span>
+          <input class="price-input" id="price-${d.i}" type="number" value="${d.price}" min="0" step="0.5"
+            onkeydown="if(event.key==='Enter') savePrice(${d.i})"
+            oninput="showSaveBtn(${d.i})">
+          <button class="price-save" id="savebtn-${d.i}" onclick="savePrice(${d.i})" style="display:none">Save</button>
+          <span class="price-saved" id="saved-${d.i}" style="display:none">✓</span>
+        </div>
+      </td>
+      <td style="color:${d.found>0?'var(--green)':'var(--text3)'};font-weight:${d.found>0?500:400}">${d.found}</td>
+      <td style="color:var(--text3)">${d.lastSeen}</td>
+      <td><button class="del-btn" onclick="deleteItem(${d.i})">✕</button></td>
+    </tr>`).join('');
+}
+
+function showSaveBtn(i) {
+  const btn = document.getElementById('savebtn-'+i);
+  const saved = document.getElementById('saved-'+i);
+  if(btn) btn.style.display='';
+  if(saved) saved.style.display='none';
+}
+
+function savePrice(i) {
+  const input = document.getElementById('price-'+i);
+  const btn = document.getElementById('savebtn-'+i);
+  const saved = document.getElementById('saved-'+i);
+  if(!input) return;
+  const val = parseFloat(input.value);
+  if(isNaN(val)||val<0){ toast('Enter a valid price','error'); return; }
+  S.db[i].price = val;
+  S.db[i].autoAdded = false;
+  if(btn) btn.style.display='none';
+  if(saved){ saved.style.display=''; setTimeout(()=>{ if(saved) saved.style.display='none'; },2000); }
+  // Re-render bill if we have a last result, so updated price shows immediately
+  if(S.lastResult) {
+    const items=S.lastResult.items||[];
+    let total=0, unknowns=[];
+    items.forEach(item=>{ const m=findDb(item.name); if(m) total+=m.price*(item.qty||1); else unknowns.push(item); });
+    const conf=Math.round((S.lastResult.overallConfidence||0)*100);
+    renderBill(items,conf,total,unknowns,new Date().toLocaleString());
+  }
+  toast('Price updated to ₹'+val.toFixed(0),'success');
+}
+
+function renderAccuracy() {
+  const log=S.accLog;
+  document.getElementById('accScans').textContent=log.length;
+  document.getElementById('accTotal').textContent=log.reduce((a,b)=>a+b.items,0);
+  if(log.length){
+    document.getElementById('accAvg').textContent=Math.round(log.reduce((a,b)=>a+b.conf,0)/log.length)+'%';
+    const totalItems=log.reduce((a,b)=>a+b.items,0)||1;
+    document.getElementById('accHit').textContent=Math.round(log.reduce((a,b)=>a+b.dbHits,0)/totalItems*100)+'%';
+  } else {document.getElementById('accAvg').textContent='—';document.getElementById('accHit').textContent='—';}
+  const labels=log.map((_,i)=>'Scan '+(i+1));
+  if(confChart) confChart.destroy();
+  confChart=new Chart(document.getElementById('confChart'),{type:'line',data:{labels:labels.length?labels:['No data'],datasets:[{label:'Confidence %',data:log.length?log.map(l=>l.conf):[0],borderColor:'#4ade80',backgroundColor:'rgba(74,222,128,0.06)',tension:0.35,fill:true,pointBackgroundColor:'#4ade80',pointRadius:5,pointHoverRadius:7}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{min:0,max:100,ticks:{color:'#5a705a',callback:v=>v+'%'},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#5a705a'},grid:{color:'rgba(255,255,255,0.04)'}}},plugins:{legend:{display:false}}}});
+  if(itemsChart) itemsChart.destroy();
+  itemsChart=new Chart(document.getElementById('itemsChart'),{type:'bar',data:{labels:labels.length?labels:['No data'],datasets:[{label:'Items',data:log.length?log.map(l=>l.items):[0],backgroundColor:'rgba(74,222,128,0.5)',borderColor:'#4ade80',borderWidth:1,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{beginAtZero:true,ticks:{color:'#5a705a',stepSize:1},grid:{color:'rgba(255,255,255,0.04)'}},x:{ticks:{color:'#5a705a'},grid:{color:'rgba(255,255,255,0.04)'}}},plugins:{legend:{display:false}}}});
+  const top=[...S.db].sort((a,b)=>b.found-a.found).slice(0,8);
+  if(freqChart) freqChart.destroy();
+  freqChart=new Chart(document.getElementById('freqChart'),{type:'bar',data:{labels:top.map(d=>d.name.substring(0,12)),datasets:[{label:'Detections',data:top.map(d=>d.found),backgroundColor:'rgba(251,191,36,0.5)',borderColor:'#fbbf24',borderWidth:1,borderRadius:4}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,scales:{x:{beginAtZero:true,ticks:{color:'#5a705a',stepSize:1},grid:{color:'rgba(255,255,255,0.04)'}},y:{ticks:{color:'#5a705a',font:{size:11}},grid:{display:false}}},plugins:{legend:{display:false}}}});
+  document.getElementById('scanLog').innerHTML=log.length
+    ?[...log].reverse().map((l,i)=>`<tr><td style="color:var(--text3)">${log.length-i}</td><td>${l.ts}</td><td><strong style="color:var(--text)">${l.items}</strong></td><td><div class="conf-bar-wrap"><div class="conf-bar" style="width:${l.conf}px;background:${l.conf>=70?'#4ade80':l.conf>=40?'#fbbf24':'#f87171'}"></div><span class="conf-pct">${l.conf}%</span></div></td><td style="color:var(--green)">${l.dbHits}</td><td style="color:var(--text)">₹${l.total.toFixed(0)}</td></tr>`).join('')
+    :'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No scans yet</td></tr>';
+}
+
+function renderHistory() {
+  const el=document.getElementById('historyContent');
+  if(!S.scans.length){el.innerHTML=`<div class="empty-state"><div class="empty-icon">🛒</div><div class="empty-text">No scans saved yet</div></div>`;return;}
+  el.innerHTML=`<div class="hist-grid">${[...S.scans].reverse().map((s,ri)=>{
+    const i=S.scans.length-1-ri;
+    return `<div class="hist-card">
+      <img class="hist-thumb" src="${s.thumb}" alt="Scan ${i+1}">
+      <div class="hist-body">
+        <div class="hist-ts">${s.ts}</div>
+        <div class="hist-stats">
+          <span class="hist-stat"><strong>${s.items.length}</strong> items</span>
+          <span class="hist-stat"><strong style="color:var(--green)">₹${s.total.toFixed(0)}</strong></span>
+          <span class="hist-stat"><strong style="color:${s.conf>=70?'var(--green)':s.conf>=40?'var(--amber)':'var(--red)'}">${s.conf}%</strong> conf</span>
+        </div>
+        <div class="hist-items-list">${s.items.slice(0,5).map(it=>it.name).join(' · ')+(s.items.length>5?' + '+(s.items.length-5)+' more':'')}</div>
+        ${s.notes?`<div style="font-size:11px;color:var(--text3);margin-top:6px;font-style:italic">${s.notes}</div>`:''}
+        <button class="hist-del" onclick="deleteScan(${i})">Delete scan</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+function deleteScan(i){if(!confirm('Delete this scan?'))return;S.scans.splice(i,1);renderHistory();}
+function findDb(name){
+  const norm=s=>s.toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim();
+  const words=s=>norm(s).split(' ').filter(w=>w.length>1);
+  const n=norm(name);
+  const nWords=words(name);
+
+  // 1. Exact normalized match
+  let m=S.db.find(d=>norm(d.name)===n);
+  if(m) return m;
+
+  // 2. One contains the other
+  m=S.db.find(d=>{ const dn=norm(d.name); return n.includes(dn)||dn.includes(n); });
+  if(m) return m;
+
+  // 3. Brand (first word) matches + significant keyword overlap
+  const brand=nWords[0];
+  let best=null, bestScore=0;
+  for(const d of S.db){
+    const dWords=words(d.name);
+    if(dWords[0]!==brand) continue;
+    const common=nWords.filter(w=>dWords.includes(w));
+    const score=common.length/Math.max(nWords.length,dWords.length);
+    if(score>bestScore){ bestScore=score; best=d; }
+  }
+  if(bestScore>=0.4) return best;
+
+  // 4. Any 2 strong keywords in common (len>4)
+  const strongN=nWords.filter(w=>w.length>4);
+  m=S.db.find(d=>{
+    const strongD=words(d.name).filter(w=>w.length>4);
+    return strongD.filter(w=>strongN.includes(w)).length>=2;
+  });
+  if(m) return m;
+
+  // 5. Single very strong keyword (brand name, len>5)
+  m=S.db.find(d=>{
+    const strongD=words(d.name).filter(w=>w.length>5);
+    return strongD.some(w=>n.includes(w));
+  });
+  return m||null;
+}
+function esc(s){return s.replace(/[^a-zA-Z0-9]/g,'_')}
+function setStatus(msg,cls=''){const sb=document.getElementById('statusBar');if(!msg){sb.style.display='none';return;}sb.style.display='block';sb.className='status-bar'+(cls?' '+cls:'');sb.textContent=msg;}
+function toast(msg,type='success'){const c=document.getElementById('toasts');const t=document.createElement('div');t.className='toast '+type;t.innerHTML=(type==='success'?'<span style="color:var(--green)">✓</span>':'<span style="color:var(--red)">✗</span>')+' '+msg;c.appendChild(t);setTimeout(()=>{t.style.opacity='0';t.style.transition='opacity 0.3s';setTimeout(()=>t.remove(),300);},3000);}
+
+renderDb();
+</script>
+</body>
+</html>
